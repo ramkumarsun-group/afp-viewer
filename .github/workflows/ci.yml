@@ -25,19 +25,17 @@ jobs:
 
       - name: Smoke test — import check
         run: |
-          python -c "from src.parser import AFPParser; print('✓ parser')"
-          python -c "from src.renderer import AFPRenderer; print('✓ renderer')"
+          python -c "from src.parser import AFPDocument, AFPPage, StructuredField; print('✓ parser')"
           python -c "import PyQt6.QtWidgets, PyQt6.QtSvg; print('✓ PyQt6')"
           python -c "from PIL import Image; print('✓ Pillow')"
 
       - name: Smoke test — parse sample AFP
         run: |
           python - <<'EOF'
-          from src.parser import AFPParser
-          p = AFPParser()
-          docs = p.parse("samples/Sample_1.afp")
-          assert docs and len(docs) > 0, "No documents parsed"
-          print(f"✓ Parsed {len(docs)} document(s), {sum(len(d.pages) for d in docs)} page(s)")
+          from src.parser import parse_afp_file
+          doc = parse_afp_file("samples/Sample_1.afp")
+          assert doc is not None, "parse_afp_file returned None"
+          print(f"✓ Parsed document with {len(doc.pages)} page(s)")
           EOF
 
       - name: Build macOS app bundle
@@ -73,19 +71,17 @@ jobs:
 
       - name: Smoke test — import check
         run: |
-          python -c "from src.parser import AFPParser; print('v parser')"
-          python -c "from src.renderer import AFPRenderer; print('v renderer')"
+          python -c "from src.parser import AFPDocument, AFPPage, StructuredField; print('v parser')"
           python -c "import PyQt6.QtWidgets, PyQt6.QtSvg; print('v PyQt6')"
           python -c "from PIL import Image; print('v Pillow')"
 
       - name: Smoke test — parse sample AFP
         run: |
           python -c "
-          from src.parser import AFPParser
-          p = AFPParser()
-          docs = p.parse('samples/Sample_1.afp')
-          assert docs and len(docs) > 0, 'No documents parsed'
-          print(f'v Parsed {len(docs)} document(s), {sum(len(d.pages) for d in docs)} page(s)')
+          from src.parser import parse_afp_file
+          doc = parse_afp_file('samples/Sample_1.afp')
+          assert doc is not None, 'parse_afp_file returned None'
+          print(f'v Parsed document with {len(doc.pages)} page(s)')
           "
 
       - name: Build Windows executable
