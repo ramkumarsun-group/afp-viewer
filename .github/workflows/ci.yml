@@ -1,0 +1,105 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── macOS build ─────────────────────────────────────────────────────────────
+  build-macos:
+    name: Build (macOS)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Smoke test — import check
+        run: |
+          python -c "from src.parser import AFPParser; print('✓ parser')"
+          python -c "from src.renderer import AFPRenderer; print('✓ renderer')"
+          python -c "import PyQt6.QtWidgets, PyQt6.QtSvg; print('✓ PyQt6')"
+          python -c "from PIL import Image; print('✓ Pillow')"
+
+      - name: Smoke test — parse sample AFP
+        run: |
+          python - <<'EOF'
+          from src.parser import AFPParser
+          p = AFPParser()
+          docs = p.parse("samples/Sample_1.afp")
+          assert docs and len(docs) > 0, "No documents parsed"
+          print(f"✓ Parsed {len(docs)} document(s), {sum(len(d.pages) for d in docs)} page(s)")
+          EOF
+
+      - name: Build macOS app bundle
+        run: pyinstaller afp_viewer.spec --noconfirm
+
+      - name: Verify app bundle exists
+        run: |
+          test -d "dist/AFP Viewer.app" && echo "✓ App bundle created"
+          ls -lh "dist/AFP Viewer.app/Contents/MacOS/"
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AFP-Viewer-macOS
+          path: dist/AFP Viewer.app
+          retention-days: 7
+
+  # ── Windows build ────────────────────────────────────────────────────────────
+  build-windows:
+    name: Build (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Smoke test — import check
+        run: |
+          python -c "from src.parser import AFPParser; print('v parser')"
+          python -c "from src.renderer import AFPRenderer; print('v renderer')"
+          python -c "import PyQt6.QtWidgets, PyQt6.QtSvg; print('v PyQt6')"
+          python -c "from PIL import Image; print('v Pillow')"
+
+      - name: Smoke test — parse sample AFP
+        run: |
+          python -c "
+          from src.parser import AFPParser
+          p = AFPParser()
+          docs = p.parse('samples/Sample_1.afp')
+          assert docs and len(docs) > 0, 'No documents parsed'
+          print(f'v Parsed {len(docs)} document(s), {sum(len(d.pages) for d in docs)} page(s)')
+          "
+
+      - name: Build Windows executable
+        run: pyinstaller afp_viewer_windows.spec --noconfirm
+
+      - name: Verify .exe exists
+        run: |
+          Test-Path "dist\AFP Viewer\AFP Viewer.exe"
+          Get-ChildItem "dist\AFP Viewer\" | Select-Object Name, Length
+        shell: pwsh
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AFP-Viewer-Windows
+          path: dist/AFP Viewer/
+          retention-days: 7
